@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
 
     // ... run a full EPANET analysis
     //EN_runEpanet(f1, f2, "");
-    EN_runEpanetTestPressure(f1, f2, f3);
+    EN_runEpanetPressureEvaluation(f1, f2, f3);
     //system("PAUSE");
     return 0;
 }
