@@ -28,7 +28,8 @@ int main(int argc, char* argv[])
     if (argc > 3) f3 = argv[3];
 
     // ... run a full EPANET analysis
-    EN_runEpanet(f1, f2, f3);
+    //EN_runEpanet(f1, f2, "");
+    EN_runEpanetTestPressure(f1, f2, f3);
     //system("PAUSE");
     return 0;
 }
