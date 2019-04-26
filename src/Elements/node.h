@@ -41,6 +41,7 @@ class Node: public Element
     virtual int    type() = 0;
     virtual void   convertUnits(Network* nw) = 0;
     virtual void   initialize(Network* nw);
+    virtual void   resetData();
 
     // Overridden for Junction nodes
     virtual void   findFullDemand(double multiplier, double patternFactor) { }

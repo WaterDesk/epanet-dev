@@ -88,6 +88,12 @@ void Network::clear()
     //msgLog.str("");
 }
 
+void Network::resetData()
+{
+    for (Node* node : nodes) node->resetData();
+    for (Link* link : links) link->resetData();
+}
+
 //-----------------------------------------------------------------------------
 
 int Network::count(Element::ElementType eType)

@@ -49,6 +49,7 @@ class Link: public Element
 
     // Initializes hydraulic settings
     virtual void   initialize(bool initFlow);
+    virtual void   resetData();
     virtual void   setInitFlow() {}
     virtual void   setInitStatus(int s) {}
     virtual void   setInitSetting(double s) {}

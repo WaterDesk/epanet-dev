@@ -50,6 +50,7 @@ namespace Epanet
         int   load(const char* fname);
         int   save(const char* fname);
         void  clear();
+        void  closeEngines();
 
         int   initSolver(bool initFlows);
         int   runSolver(int* t);

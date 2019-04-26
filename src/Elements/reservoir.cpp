@@ -45,3 +45,10 @@ void Reservoir::setFixedGrade()
     head = elev * f;
     fixedGrade = true;
 }
+
+void Reservoir::resetData()
+{
+    __super::resetData();
+    fullDemand = 0.0;
+    fixedGrade = true;
+}

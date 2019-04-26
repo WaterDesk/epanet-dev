@@ -138,6 +138,21 @@ namespace Epanet
     }
 
 //-----------------------------------------------------------------------------
+    //  Close the engines but not clear the project data.
+
+    void Project::closeEngines()
+    {
+        hydEngine.close();
+        hydEngineOpened = false;
+
+        qualEngine.close();
+        qualEngineOpened = false;
+
+        solverInitialized = false;
+    }
+
+
+//-----------------------------------------------------------------------------
 
     //  Initialize the project's solvers.
 

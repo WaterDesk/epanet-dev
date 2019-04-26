@@ -47,6 +47,7 @@ class Network
 
     // Clears all elements from the network
     void          clear();
+    void          resetData();
 
     // Adds an element to the network
     bool          addElement(Element::ElementType eType, int subType, std::string name);

@@ -37,6 +37,7 @@ class Tank: public Node
     void   validate(Network* nw);
     void   convertUnits(Network* nw);
     void   initialize(Network* nw);
+    void   resetData();
     bool   isReactive() { return bulkCoeff != 0.0; }
     bool   isFull()     { return head >= maxHead; }
     bool   isEmpty()    { return head <= minHead; }

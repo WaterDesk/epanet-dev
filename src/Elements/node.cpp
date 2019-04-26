@@ -76,3 +76,14 @@ void Node::initialize(Network* nw)
     if ( type() == JUNCTION ) fixedGrade = false;
     else fixedGrade = true;
 }
+
+void Node::resetData()
+{
+    fixedGrade = false;
+    head = 0.0;
+    qGrad = 0.0;
+    fullDemand = 0.0;
+    actualDemand = 0.0;
+    outflow = 0.0;
+    quality = 0.0;
+}

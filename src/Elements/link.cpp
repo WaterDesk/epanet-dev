@@ -88,6 +88,19 @@ void Link::initialize(bool reInitFlow)
 
 //-----------------------------------------------------------------------------
 
+void Link::resetData()
+{
+    status = 0;
+    flow = 0.0;
+    leakage = 0.0;
+    hLoss = 0.0;
+    hGrad = 0.0;
+    setting = 0.0;
+    quality = 0.0;
+}
+
+//-----------------------------------------------------------------------------
+
 double Link::getUnitHeadLoss()
 {
     return hLoss;

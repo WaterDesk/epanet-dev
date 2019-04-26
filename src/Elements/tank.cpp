@@ -115,6 +115,21 @@ void Tank::initialize(Network* nw)
     fixedGrade = true;
 }
 
+void Tank::resetData()
+{
+    __super::resetData();
+
+    maxVolume = 0.0;
+    volume = 0.0;
+    area = 0.0;
+    ucfLength = 0.0;
+    pastHead = 0.0;
+    pastVolume = 0.0;
+    pastOutflow = 0.0;
+
+    fixedGrade = true;
+}
+
 //-----------------------------------------------------------------------------
 
 //  Compute tank volume from water surface elevation

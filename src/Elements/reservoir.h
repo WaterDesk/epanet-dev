@@ -36,6 +36,7 @@ class Reservoir: public Node
     int      type() { return Node::RESERVOIR; }
     void     convertUnits(Network* nw);
     void     setFixedGrade();
+    void     resetData();
 
     // Properties
     Pattern* headPattern;    //!< time pattern for reservoir's head
