@@ -1,15 +1,25 @@
 #include "PressureEvaluation.h"
 #include "node.h"
 #include "junction.h"
+#include "Utilities/utilities.h"
 
 #include <time.h>
 #include <iostream>
 #include <fstream>
 
 
-PressureEvaluation::PressureEvaluation(const char* inpFile, const char* rptFile, const char* cydFile)
+PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
 {
-    std::cout << "\n... EPANET Version 3.0\n";
+    Utilities::parseNumber(strDemandDelta, demandDelta);
+    Utilities::parseNumber(strPressureDelta, pressureDelta);
+    m_bLogDetails = bLogDetails;
+
+    std::string dir = resultDir;
+    if (dir[dir.length() - 1] != '\\')
+        dir += '\\';
+
+    std::string rptFile = dir + "report_" + strDemandDelta + "_" + strPressureDelta + "m.rpt";
+    std::string strResultFile = dir + "PressureEvaluationResult_" + strDemandDelta + "_" + strPressureDelta + "m.txt";
 
     // ... declare a Project variable and an error indicator
     err = 0;
@@ -17,7 +27,7 @@ PressureEvaluation::PressureEvaluation(const char* inpFile, const char* rptFile,
     // ... initialize execution time clock
 
     // ... open the command line files and load network data
-    if ((err = project.openReport(rptFile))) return ;
+    if ((err = project.openReport(rptFile.c_str()))) return ;
     std::cout << "\n    Reading input file ...";
     if ((err = project.load(inpFile))) return ;
     //if ((err = p.openOutput(outFile))) return err;
@@ -29,15 +39,14 @@ PressureEvaluation::PressureEvaluation(const char* inpFile, const char* rptFile,
     resultCount = (int)pNetwork->nodes.size();
     baseHeadResults.reserve(resultCount);
 
-    resultFile.open("C:\\Users\\xuxi\\Documents\\EPANET Projects\\head_result.txt");
+    m_resultFile.open(strResultFile);
 
-    strPressureTapFile = cydFile;
-    initPressureTapIndexes();
+    initPressureTapIndexes(pressureNodeFile);
 }
 
 PressureEvaluation::~PressureEvaluation()
 {
-    resultFile.close();
+    m_resultFile.close();
 }
 
 int PressureEvaluation::error() const
@@ -71,11 +80,13 @@ void PressureEvaluation::doAllEvaluation()
     int nodeCount = (int)pNetwork->nodes.size();
     for (int i = 0; i < nodeCount; i++)
     {
-        doEvaluation(i, 100);
+        doEvaluation(i, demandDelta);
     }
+
+    doPressureTapAnalysis();
 }
 
-void PressureEvaluation::doEvaluation(int index, double deltaDemand)
+void PressureEvaluation::doEvaluation(int nodeIndex, double deltaDemand)
 {
     // close hydraulic engine
     project.closeEngines();
@@ -83,14 +94,15 @@ void PressureEvaluation::doEvaluation(int index, double deltaDemand)
 
     // update demand
 
-    Node* pTestNode = pNetwork->nodes[index];
+    Node* pTestNode = pNetwork->nodes[nodeIndex];
     if (Node::JUNCTION != pTestNode->type())
         return;
     Junction* pJuction = dynamic_cast<Junction*>(pTestNode);
     if (pJuction == nullptr)
         return;
 
-    resultFile << " #### compute again:  " << pTestNode->name << "\n";
+    if (m_bLogDetails)
+        m_resultFile << " #### compute again:  " << pTestNode->name << "\n";
 
 
     double originalDemand = pJuction->primaryDemand.baseDemand;
@@ -106,7 +118,7 @@ void PressureEvaluation::doEvaluation(int index, double deltaDemand)
     err = project.runSolver(&t);
 
     // output result
-    outputHeadDelta();
+    outputHeadDelta(pTestNode->name);
     //for (size_t i = 0; i < pNetwork->nodes.size(); i++)
     //{
     //    if (i % 1000 != 0)
@@ -143,9 +155,9 @@ void PressureEvaluation::restoreDemand(Junction* pJuction, double originalDemand
     }
 }
 
-void PressureEvaluation::initPressureTapIndexes()
+void PressureEvaluation::initPressureTapIndexes(const char* pressureNodeFile)
 {
-    std::ifstream fin(strPressureTapFile, std::ios::in);
+    std::ifstream fin(pressureNodeFile, std::ios::in);
     for (;;)
     {
         std::string line;
@@ -197,21 +209,77 @@ void PressureEvaluation::initPressureTapIndexes()
     }
 }
 
-void PressureEvaluation::outputHeadDelta()
+void PressureEvaluation::outputHeadDelta(const std::string& nodeName)
 {
+    bool bAdded = false;
     for (int index : pressureTapIndexes)
     {
         double delta = 0;
         if (index != -1)
         {
-            Node* node = pNetwork->node(index);
-            double head = node->head * lcf;
-            delta = head - baseHeadResults[index];
-            resultFile << node->name << "    " << baseHeadResults[index] << "    " << head << "    " << delta << "\n";
+            Node* pressureNode = pNetwork->node(index);
+            double head = pressureNode->head * lcf;
+            delta = baseHeadResults[index] - head;
+            if (m_bLogDetails)
+                m_resultFile << pressureNode->name << "    " << baseHeadResults[index] << "    " << head << "    " << delta << "\n";
+
+            DeltaDemandResult result;
+            result.pressureTapName = pressureNode->name;
+            result.baseHead = baseHeadResults[index];
+            result.actualHead = head;
+            result.deltaHead = delta;
+            if (bAdded)
+            {
+                nodeDeltaDemandResultTable[nodeName].push_back(result);
+            }
+            else
+            {
+                std::vector<DeltaDemandResult> results;
+                results.push_back(result);
+                nodeDeltaDemandResultTable[nodeName] = results;
+                bAdded = true;
+            }
         }
         else
         {
-            resultFile << pressureTapNames[index] << "    " << delta << "\n";
+            if (m_bLogDetails)
+                m_resultFile << pressureTapNames[index] << "    " << delta << "\n";
         }
+    }
+}
+
+void PressureEvaluation::doPressureTapAnalysis()
+{
+    for (auto it = nodeDeltaDemandResultTable.begin(); it != nodeDeltaDemandResultTable.end(); ++it)
+    {
+        for (const DeltaDemandResult& deltaResult : it->second)
+        {
+            if (deltaResult.deltaHead >= pressureDelta)
+            {
+                if (impactedNodeNames.find(deltaResult.pressureTapName) == impactedNodeNames.end())
+                {
+                    std::vector<std::string> nodeNames;
+                    nodeNames.push_back(it->first);
+                    impactedNodeNames[deltaResult.pressureTapName] = nodeNames;
+                }
+                else
+                {
+                    impactedNodeNames[deltaResult.pressureTapName].push_back(it->first);
+                }
+            }
+        }
+    }
+
+    m_resultFile << "**** Pressure Tap nodes evaluation ****" << "\n";
+    m_resultFile << "**** Demand Delta: " << demandDelta << "    Pressure Delta: " << pressureDelta << "    ****\n";
+
+    for (auto it = impactedNodeNames.begin(); it != impactedNodeNames.end(); it++)
+    {
+        m_resultFile << it->first << ": ";
+        for (const std::string & nodeName : it->second)
+        {
+            m_resultFile << nodeName << ", ";
+        }
+        m_resultFile << "\n";
     }
 }

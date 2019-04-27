@@ -225,11 +225,14 @@ int EN_runEpanetTestPressure(const char* inpFile, const char* rptFile, const cha
     return 0;
 }
 
-int EN_runEpanetPressureEvaluation(const char* inpFile, const char* rptFile, const char* cydFile)
+//int EN_runEpanetPressureEvaluation(const char* inpFile, const char* rptFile, const char* cydFile)
+int EN_runEpanetPressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
 {
-    PressureEvaluation evaluation(inpFile, rptFile, cydFile);
-
+    std::cout << "\n... EPANET Version 3.0\n";
     clock_t start_t = clock();
+    
+    PressureEvaluation evaluation(inpFile, pressureNodeFile, resultDir, strDemandDelta, strPressureDelta, bLogDetails);
+
 
     evaluation.doAllEvaluation();
     int err = evaluation.error();
