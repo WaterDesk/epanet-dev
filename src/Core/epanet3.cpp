@@ -119,122 +119,14 @@ int EN_runEpanet(const char* inpFile, const char* rptFile, const char* outFile)
     return 0;
 }
 
-int EN_runEpanetTestPressure(const char* inpFile, const char* rptFile, const char* outFile)
-{
-    std::cout << "\n... EPANET Version 3.0\n";
-
-    // ... declare a Project variable and an error indicator
-    Project p;
-    int err = 0;
-
-    // ... initialize execution time clock
-
-    // ... open the command line files and load network data
-    if ((err = p.openReport(rptFile))) return err;
-    std::cout << "\n    Reading input file ...";
-    if ((err = p.load(inpFile))) return err;
-    //if ((err = p.openOutput(outFile))) return err;
-    p.writeSummary();
-
-    std::ofstream  resultFile;
-    resultFile.open(outFile);
-    resultFile << "start outFile" << "\n";
-
-
-    Network* pNetwork = p.getNetwork();
-    double lcf = pNetwork->ucf(Units::LENGTH);
-    clock_t start_t = clock();
-    {
-        pNetwork->resetData();
-
-        // ... initialize the solver
-        std::cout << "\n    Initializing solver ...";
-        if ((err = p.initSolver(false))) return err;
-        std::cout << "\n    ";
-
-        int t = 0;
-        err = p.runSolver(&t);
-
-        // output node head
-        for (Node* node : pNetwork->nodes)
-        {
-            double head = node->head * lcf;
-            resultFile << node->name << "    " << head << "\n";
-        }
-
-        // close hydraulic engine
-        p.closeEngines();
-
-        pNetwork->resetData();
-
-        Node* pTestNode = pNetwork->nodes[7076];
-        if (Node::JUNCTION == pTestNode->type())
-        {
-            Junction* pJuction = dynamic_cast<Junction*>(pTestNode);
-            pJuction->primaryDemand.baseDemand += 100;
-            pJuction->demands.clear();
-            pJuction->demands.push_back(pJuction->primaryDemand);
-
-            double qcf = pNetwork->ucf(Units::FLOW);
-            for (Demand& demand : pJuction->demands)
-            {
-                demand.baseDemand /= qcf;
-            }
-        }
-
-        if ((err = p.initSolver(false))) return err;
-        t = 0;
-        err = p.runSolver(&t);
-
-        resultFile << " compute again  " << "\n";
-        for (Node* node : pNetwork->nodes)
-        {
-            double head = node->head * lcf;
-            resultFile << node->name << "    " << head << "\n";
-        }
-    }
-
-    resultFile.close(); 
-    // ... simulation was successful
-    if (!err)
-    {
-        // ... report execution time
-        clock_t end_t = clock();
-        double cpu_t = ((double)(end_t - start_t)) / CLOCKS_PER_SEC;
-        std::stringstream ss;
-        ss << "\n  Simulation completed in ";
-        p.writeMsg(ss.str());
-        ss.str("");
-        if (cpu_t < 0.001) ss << "< 0.001 sec.";
-        else ss << std::setprecision(3) << cpu_t << " sec.";
-        p.writeMsg(ss.str());
-
-        // ... report simulation results
-        std::cout << "\n    Writing report ...                           ";
-        err = p.writeReport();
-        std::cout << "\n    Simulation completed.                         \n";
-        std::cout << "\n... EPANET completed in " << ss.str() << "\n";
-    }
-
-    if (err)
-    {
-        p.writeMsgLog();
-        std::cout << "\n\n    There were errors. See report file for details.\n";
-        return err;
-    }
-    return 0;
-}
-
-//int EN_runEpanetPressureEvaluation(const char* inpFile, const char* rptFile, const char* cydFile)
-int EN_runEpanetPressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
+int EN_runEpanetPressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* testNodesFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
 {
     std::cout << "\n... EPANET Version 3.0\n";
     clock_t start_t = clock();
     
-    PressureEvaluation evaluation(inpFile, pressureNodeFile, resultDir, strDemandDelta, strPressureDelta, bLogDetails);
-
-
+    PressureEvaluation evaluation(inpFile, pressureNodeFile, testNodesFile, resultDir, strDemandDelta, strPressureDelta, bLogDetails);
     evaluation.doAllEvaluation();
+
     int err = evaluation.error();
 
     // ... simulation was successful

@@ -20,7 +20,7 @@ public:
 class PressureEvaluation
 {
 public:
-    PressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails);
+    PressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* testNodesFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails);
     ~PressureEvaluation();
 
     int error() const;
@@ -32,6 +32,7 @@ private:
     void updateDemand(Junction* pJuction, double deltaDemand);
     void restoreDemand(Junction* pJuction, double originalDemand);
     void initPressureTapIndexes(const char* pressureNodeFile);
+    void initTestNodeIndexes(const char* testNodesFile);
     void outputHeadDelta(const std::string& nodeName);
     void doPressureTapAnalysis();
 
@@ -45,6 +46,10 @@ private:
     std::string strDeltaDemandFile;
     std::vector<std::string>    pressureTapNames;
     std::vector<int>            pressureTapIndexes;
+
+    std::vector<std::string>    testNodeNames;
+    std::vector<int>            testNodeIndexes;
+
     int         err;
     double      lcf;
     double      qcf;

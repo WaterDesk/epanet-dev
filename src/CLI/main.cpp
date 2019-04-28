@@ -98,6 +98,6 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    EN_runEpanetPressureEvaluation(inpFile, pressureNodesFile, resultDir, demandDelta, pressureDelta, bLogDetails);
+    EN_runEpanetPressureEvaluation(inpFile, pressureNodesFile, testNodesFile, resultDir, demandDelta, pressureDelta, bLogDetails);
     return 0;
 }

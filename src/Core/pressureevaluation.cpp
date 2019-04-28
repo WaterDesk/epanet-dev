@@ -8,7 +8,7 @@
 #include <fstream>
 
 
-PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
+PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* testNodesFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
 {
     Utilities::parseNumber(strDemandDelta, demandDelta);
     Utilities::parseNumber(strPressureDelta, pressureDelta);
@@ -42,6 +42,10 @@ PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressure
     m_resultFile.open(strResultFile);
 
     initPressureTapIndexes(pressureNodeFile);
+    if (testNodesFile != nullptr)
+    {
+        initTestNodeIndexes(testNodesFile);
+    }
 }
 
 PressureEvaluation::~PressureEvaluation()
@@ -69,7 +73,6 @@ void PressureEvaluation::doBaseEvaluation()
     {
         double head = node->head * lcf;
         baseHeadResults.push_back(head);
-        //resultFile << node->name << "    " << head << "\n";
     }
 }
 
@@ -77,10 +80,22 @@ void PressureEvaluation::doAllEvaluation()
 {
     doBaseEvaluation();
 
-    int nodeCount = (int)pNetwork->nodes.size();
-    for (int i = 0; i < nodeCount; i++)
+    if (testNodeIndexes.size() == 0)
     {
-        doEvaluation(i, demandDelta);
+        int nodeCount = (int)pNetwork->nodes.size();
+        for (int i = 0; i < nodeCount; i++)
+        {
+            doEvaluation(i, demandDelta);
+        }
+    }
+    else
+    {
+        for (size_t i = 0; i < testNodeIndexes.size(); i++)
+        {
+            int nodeIndex = testNodeIndexes[i];
+            if (nodeIndex != -1)
+                doEvaluation(i, demandDelta);
+        }
     }
 
     doPressureTapAnalysis();
@@ -119,15 +134,6 @@ void PressureEvaluation::doEvaluation(int nodeIndex, double deltaDemand)
 
     // output result
     outputHeadDelta(pTestNode->name);
-    //for (size_t i = 0; i < pNetwork->nodes.size(); i++)
-    //{
-    //    if (i % 1000 != 0)
-    //        continue;
-    //    Node* node = pNetwork->node((int)i);
-    //    double head = node->head * lcf;
-    //    double delta = baseHeadResults[i] - head;
-    //    resultFile << node->name << "    " << baseHeadResults[i] << "    " << head << "    " << delta << "\n";
-    //}
 
     // rollback the demand
     restoreDemand(pJuction, originalDemand);
@@ -206,6 +212,60 @@ void PressureEvaluation::initPressureTapIndexes(const char* pressureNodeFile)
             }
         }
         pressureTapIndexes.push_back(index);
+    }
+}
+
+void PressureEvaluation::initTestNodeIndexes(const char* testNodesFile)
+{
+    std::ifstream fin(testNodesFile, std::ios::in);
+    for (;;)
+    {
+        std::string line;
+        getline(fin, line, '\n');
+        if (fin.fail())
+        {
+            if (fin.eof()) break;    // end of file reached - normal termination
+        }
+
+        std::string s1;
+        int i = 0;
+        for (; i < line.length(); i++)
+        {
+            char chLine = line[i];
+            if (chLine == ' ' || chLine == '\t')
+            {
+                if (s1.empty())
+                    continue;
+                else
+                    break;
+            }
+            else
+            {
+                s1 += chLine;
+            }
+        }
+
+        if (s1.empty())
+            continue;
+
+        testNodeNames.push_back(s1);
+    }
+
+    testNodeIndexes.clear();
+    testNodeIndexes.reserve(testNodeNames.size());
+    for (std::string name : testNodeNames)
+    {
+        int index = -1;
+        for (size_t i = 0; i < pNetwork->nodes.size(); i++)
+        {
+            Node* node = pNetwork->nodes[i];
+            if (node->name.compare(name) == 0)
+            {
+                index = (int)i;
+                break;
+            }
+        }
+        testNodeIndexes.push_back(index);
     }
 }
 
