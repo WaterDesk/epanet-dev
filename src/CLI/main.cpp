@@ -27,32 +27,77 @@ int main(int argc, char* argv[])
     //const char* f3 = "";
     //if (argc > 3) f3 = argv[3];
 
-    if (argc < 6)
+    // ... run a full EPANET analysis
+    //EN_runEpanet(f1, f2, "");
+    //system("PAUSE");
+
+    const char* inpFile = nullptr;
+    const char* pressureNodesFile = nullptr;
+    const char* testNodesFile = nullptr;
+    const char* resultDir = nullptr;
+    const char* demandDelta = nullptr;
+    const char* pressureDelta = nullptr;
+
+    bool bLogDetails = false;
+
+    for (int i = 1; i < argc; i++)
     {
-        std::cout << "\nCorrect syntax is: epanet3 inpFile pressureNodesFile resultDir demandDelta pressureDelta (logDetails: 1)\n";
+        std::string arg = argv[i];
+        if (arg == "-inpFile")
+        {
+            i++;
+            if (i < argc)
+                inpFile = argv[i];
+        }
+        else if (arg == "-pressureNodesFile")
+        {
+            i++;
+            if (i < argc)
+                pressureNodesFile = argv[i];
+        }
+        else if (arg == "-testNodesFile")
+        {
+            i++;
+            if (i < argc)
+                testNodesFile = argv[i];
+        }
+        else if (arg == "-resultDir")
+        {
+            i++;
+            if (i < argc)
+                resultDir = argv[i];
+        }
+        else if (arg == "-demandDelta")
+        {
+            i++;
+            if (i < argc)
+                demandDelta = argv[i];
+        }
+        else if (arg == "-pressureDelta")
+        {
+            i++;
+            if (i < argc)
+                pressureDelta = argv[i];
+        }
+        else if (arg == "-logDetails")
+        {
+            bLogDetails = true;
+        }
+    }
+
+    if (inpFile == nullptr || pressureNodesFile == nullptr || resultDir == nullptr || demandDelta == nullptr || pressureDelta == nullptr)
+    {
+        std::cout << "Usage: \n";
+        std::cout << "    -inpFile <inpFile>\n";
+        std::cout << "    -pressureNodesFile <pressureNodesFile>\n";
+        std::cout << "    -resultDir <resultDir>\n";
+        std::cout << "    -demandDelta <demandDelta>\n";
+        std::cout << "    -pressureDelta <pressureDelta>\n";
+        std::cout << "    [-testNodesFile <testNodesFile>]\n";
+        std::cout << "    [-logDetails]\n";
         return 0;
     }
 
-    // arg 1: inp file path
-    // arg 2: pressure node file path
-    // arg 3: result files directory, e.g. D:\test\
-    // arg 4: demand delta
-    // arg 5: pressure delta
-    // arg 6: log details if 1, optional
-
-    const char* inpFile = argv[1];
-    const char* pressureNodesFile = argv[2];
-    const char* resultDir = argv[3];
-    const char* strDemandDelta = argv[4];
-    const char* strPressureDelta = argv[5];
-
-    bool bLogDetails = false;
-    if (argc > 6)
-        bLogDetails = true;
-
-    // ... run a full EPANET analysis
-    //EN_runEpanet(f1, f2, "");
-    EN_runEpanetPressureEvaluation(inpFile, pressureNodesFile, resultDir, strDemandDelta, strPressureDelta, bLogDetails);
-    //system("PAUSE");
+    EN_runEpanetPressureEvaluation(inpFile, pressureNodesFile, resultDir, demandDelta, pressureDelta, bLogDetails);
     return 0;
 }
