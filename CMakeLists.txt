@@ -24,6 +24,7 @@ src/Core/hydbalance.cpp
 src/Core/hydengine.cpp
 src/Core/network.cpp
 src/Core/options.cpp
+src/Core/pressureevaluation.cpp
 src/Core/project.cpp
 src/Core/qualbalance.cpp
 src/Core/qualengine.cpp
@@ -84,6 +85,7 @@ src/Core/hydbalance.h
 src/Core/hydengine.h
 src/Core/network.h
 src/Core/options.h
+src/Core/pressureevaluation.h
 src/Core/project.h
 src/Core/qualbalance.h
 src/Core/qualengine.h
