@@ -335,11 +335,10 @@ void PressureEvaluation::doPressureTapAnalysis()
 
     for (auto it = impactedNodeNames.begin(); it != impactedNodeNames.end(); it++)
     {
-        m_resultFile << it->first << ": ";
         for (const std::string & nodeName : it->second)
         {
-            m_resultFile << nodeName << ", ";
+            m_resultFile << it->first << "    ";
+            m_resultFile << nodeName << "\n";
         }
-        m_resultFile << "\n";
     }
 }
