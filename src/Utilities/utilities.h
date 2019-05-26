@@ -121,7 +121,12 @@ class Utilities
 
         x = r;
 
-        return true;
+        if (*p == '\0')
+            return true;
+
+        std::stringstream ss(s);
+        ss >> x;
+        return !ss.fail();
     }
 
 };
