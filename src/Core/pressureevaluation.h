@@ -54,6 +54,7 @@ private:
     double      lcf;
     double      qcf;
     std::ofstream  m_resultFile;
+    std::ofstream  m_logFile;
 
     std::unordered_map<std::string, std::vector<DeltaDemandResult>>      nodeDeltaDemandResultTable;
     double      pressureDelta;

@@ -6,6 +6,7 @@
 #include <time.h>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 
 PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressureNodeFile, const char* testNodesFile, const char* resultDir, const char* strDemandDelta, const char* strPressureDelta, bool bLogDetails)
@@ -18,8 +19,9 @@ PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressure
     if (dir[dir.length() - 1] != '\\')
         dir += '\\';
 
-    std::string rptFile = dir + "report_" + strDemandDelta + "_" + strPressureDelta + "m.rpt";
-    std::string strResultFile = dir + "PressureEvaluationResult_" + strDemandDelta + "_" + strPressureDelta + "m.txt";
+    std::string rptFile = dir + "report_" + strDemandDelta + "_" + strPressureDelta + ".rpt";
+    std::string strResultFile = dir + "PressureEvaluationResult_" + strDemandDelta + "_" + strPressureDelta + ".txt";
+    std::string strLogFile = dir + "PressureEvaluationResult_" + strDemandDelta + "_" + strPressureDelta + "_log.txt";
 
     // ... declare a Project variable and an error indicator
     err = 0;
@@ -40,6 +42,7 @@ PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressure
     baseHeadResults.reserve(resultCount);
 
     m_resultFile.open(strResultFile);
+    m_logFile.open(strLogFile);
 
     initPressureTapIndexes(pressureNodeFile);
     if (testNodesFile != nullptr)
@@ -51,6 +54,7 @@ PressureEvaluation::PressureEvaluation(const char* inpFile, const char* pressure
 PressureEvaluation::~PressureEvaluation()
 {
     m_resultFile.close();
+    m_logFile.close();
 }
 
 int PressureEvaluation::error() const
@@ -69,6 +73,7 @@ void PressureEvaluation::doBaseEvaluation()
     err = project.runSolver(&t);
 
     // output node head
+    baseHeadResults.reserve(pNetwork->nodes.size());
     for (Node* node : pNetwork->nodes)
     {
         double head = node->head * lcf;
@@ -80,12 +85,28 @@ void PressureEvaluation::doAllEvaluation()
 {
     doBaseEvaluation();
 
+    clock_t start_t = clock();
+
     if (testNodeIndexes.size() == 0)
     {
         int nodeCount = (int)pNetwork->nodes.size();
         for (int i = 0; i < nodeCount; i++)
         {
             doEvaluation(i, demandDelta);
+            if (i % 100 == 0)
+            {
+                clock_t end_t = clock();
+                double cpu_t = ((double)(end_t - start_t)) / CLOCKS_PER_SEC;
+                std::stringstream ss;
+                if (cpu_t < 0.001)
+                    ss << "< 0.001 sec.";
+                else
+                    ss << std::setprecision(3) << cpu_t << " sec.";
+
+                std::cout << "do evaluation: " << i << " takes " << ss.str() << "\n";
+
+                start_t = end_t;
+            }
         }
     }
     else
@@ -94,7 +115,22 @@ void PressureEvaluation::doAllEvaluation()
         {
             int nodeIndex = testNodeIndexes[i];
             if (nodeIndex != -1)
-                doEvaluation(i, demandDelta);
+                doEvaluation(nodeIndex, demandDelta);
+
+            if (i % 100 == 0)
+            {
+                clock_t end_t = clock();
+                double cpu_t = ((double)(end_t - start_t)) / CLOCKS_PER_SEC;
+                std::stringstream ss;
+                if (cpu_t < 0.001)
+                    ss << "< 0.001 sec.";
+                else
+                    ss << std::setprecision(3) << cpu_t << " sec.";
+
+                std::cout << "do evaluation: " << i << " takes " << ss.str() << "\n";
+
+                start_t = end_t;
+            }
         }
     }
 
@@ -117,16 +153,16 @@ void PressureEvaluation::doEvaluation(int nodeIndex, double deltaDemand)
         return;
 
     if (m_bLogDetails)
-        m_resultFile << " #### compute again:  " << pTestNode->name << "\n";
+        m_logFile << " #### compute again:  " << pTestNode->name << "\n";
 
 
-    double originalDemand = pJuction->primaryDemand.baseDemand;
+    //double originalDemand = pJuction->primaryDemand.baseDemand;
     updateDemand(pJuction, deltaDemand);
 
     // do simulation
     if ((err = project.initSolver(false)))
     {
-        restoreDemand(pJuction, originalDemand);
+        restoreDemand(pJuction, deltaDemand);
         return;
     }
     int t = 0;
@@ -136,29 +172,39 @@ void PressureEvaluation::doEvaluation(int nodeIndex, double deltaDemand)
     outputHeadDelta(pTestNode->name);
 
     // rollback the demand
-    restoreDemand(pJuction, originalDemand);
+    restoreDemand(pJuction, deltaDemand);
 }
 
 void PressureEvaluation::updateDemand(Junction* pJuction, double deltaDemand)
 {
-    pJuction->primaryDemand.baseDemand += deltaDemand;
-    pJuction->demands.clear();
-    pJuction->demands.push_back(pJuction->primaryDemand);
-    for (Demand& demand : pJuction->demands)
+    if (pJuction->demands.size() > 0)
     {
-        demand.baseDemand /= qcf;
+        pJuction->demands.begin()->baseDemand += deltaDemand / qcf;
     }
+
+    //pJuction->primaryDemand.baseDemand += deltaDemand;
+    //pJuction->demands.clear();
+    //pJuction->demands.push_back(pJuction->primaryDemand);
+    //for (Demand& demand : pJuction->demands)
+    //{
+    //    demand.baseDemand /= qcf;
+    //}
 }
 
-void PressureEvaluation::restoreDemand(Junction* pJuction, double originalDemand)
+void PressureEvaluation::restoreDemand(Junction* pJuction, double deltaDemand)
 {
-    pJuction->primaryDemand.baseDemand = originalDemand;
-    pJuction->demands.clear();
-    pJuction->demands.push_back(pJuction->primaryDemand);
-    for (Demand& demand : pJuction->demands)
+    if (pJuction->demands.size() > 0)
     {
-        demand.baseDemand /= qcf;
+        pJuction->demands.begin()->baseDemand -= deltaDemand / qcf;
     }
+
+    //pJuction->primaryDemand.baseDemand = originalDemand;
+    //pJuction->demands.clear();
+    //pJuction->demands.push_back(pJuction->primaryDemand);
+    //for (Demand& demand : pJuction->demands)
+    //{
+    //    demand.baseDemand /= qcf;
+    //}
 }
 
 void PressureEvaluation::initPressureTapIndexes(const char* pressureNodeFile)
@@ -281,7 +327,13 @@ void PressureEvaluation::outputHeadDelta(const std::string& nodeName)
             double head = pressureNode->head * lcf;
             delta = baseHeadResults[index] - head;
             if (m_bLogDetails)
-                m_resultFile << pressureNode->name << "    " << baseHeadResults[index] << "    " << head << "    " << delta << "\n";
+            {
+                std::stringstream ss;
+                if (delta < 0.0001 && delta > -0.0001)
+                    delta = 0;
+                ss << std::setprecision(4) << delta;
+                m_logFile << nodeName << "    " << pressureNode->name << "    " << baseHeadResults[index] << "    " << head << "    " << ss.str() << "\n";
+            }
 
             DeltaDemandResult result;
             result.pressureTapName = pressureNode->name;
@@ -303,7 +355,7 @@ void PressureEvaluation::outputHeadDelta(const std::string& nodeName)
         else
         {
             if (m_bLogDetails)
-                m_resultFile << pressureTapNames[index] << "    " << delta << "\n";
+                m_logFile << pressureTapNames[index] << "    " << delta << "\n";
         }
     }
 }
